@@ -28,13 +28,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Token expirado ou inválido
-      if (error.response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-      }
-
       // Retornar mensagem de erro do backend
       const message = error.response.data.message || 'Erro ao processar requisição';
       return Promise.reject(new Error(message));

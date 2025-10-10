@@ -40,6 +40,7 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
   const markAsRead = async (notificationId) => {
     try {
       await api.put(`/notifications/${notificationId}/read`);
+      // Atualizar UI imediatamente
       setNotifications((prev) =>
         prev.map((notif) =>
           notif._id === notificationId ? { ...notif, read: true } : notif
@@ -48,6 +49,7 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Error marking as read:", error);
+      toast.error("Erro ao marcar notificação como lida");
     }
   };
 
@@ -67,14 +69,25 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
 
   const deleteNotification = async (notificationId) => {
     try {
-      await api.delete(`/notifications/${notificationId}`);
+      // Atualizar UI imediatamente (otimistic update)
+      const notifToDelete = notifications.find(n => n._id === notificationId);
       setNotifications((prev) =>
         prev.filter((notif) => notif._id !== notificationId)
       );
+
+      // Se era não lida, decrementar o contador
+      if (notifToDelete && !notifToDelete.read) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+
+      // Fazer a requisição
+      await api.delete(`/notifications/${notificationId}`);
       toast.success("Notificação removida");
     } catch (error) {
       console.error("Error deleting notification:", error);
       toast.error("Erro ao remover notificação");
+      // Recarregar em caso de erro
+      fetchNotifications();
     }
   };
 

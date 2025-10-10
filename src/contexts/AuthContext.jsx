@@ -20,15 +20,14 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuth = () => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 
     if (token && storedUser) {
       try {
-        // Verificar se o token ainda é válido
-        const response = await api.get("/auth/me");
-        setUser(response.data.data);
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
 
         // Inicializar socket
         initSocket(token);
