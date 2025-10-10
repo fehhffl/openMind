@@ -164,7 +164,7 @@
 }
 
 .notification-item {
-  background: white;
+  background: #fafafa;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
   padding: 1rem;
@@ -182,8 +182,9 @@
 }
 
 .notification-item.unread {
-  background: #f5f7ff;
+  background: #fff5f5;
   border-color: #e63946;
+  border-left: 4px solid #e63946;
 }
 
 .notif-icon {
