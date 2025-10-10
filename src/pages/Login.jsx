@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import logo from '../assets/logo.png'
 import '../styles/Login.css'
 
 function Login() {
@@ -11,8 +12,9 @@ function Login() {
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
 
     if (!userType) {
       setError('Por favor, selecione se você é Paciente ou Psicólogo')
@@ -24,11 +26,11 @@ function Login() {
       return
     }
 
-    const success = login(email, password, userType)
-    if (success) {
-      navigate('/')
-    } else {
-      setError('Email ou senha inválidos')
+    try {
+      await login(email, password, userType)
+      navigate('/home')
+    } catch (err) {
+      setError(err.message || 'Email ou senha inválidos')
     }
   }
 
@@ -36,7 +38,7 @@ function Login() {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>PsicoConnect</h1>
+          <img src={logo} alt="OpenMind" className="login-logo" />
           <p>Conectando psicólogos estagiários e pacientes</p>
         </div>
 
@@ -91,10 +93,11 @@ function Login() {
         </form>
 
         <div className="login-footer">
-          <p className="demo-info">
-            🔒 Para demonstração, use:<br/>
-            <strong>Paciente:</strong> paciente@demo.com / senha123<br/>
-            <strong>Psicólogo:</strong> psicologo@demo.com / senha123
+          <p>
+            Não tem uma conta? <Link to="/register">Cadastre-se</Link>
+          </p>
+          <p className="back-home">
+            <Link to="/">← Voltar para o início</Link>
           </p>
         </div>
       </div>
