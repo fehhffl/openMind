@@ -1,75 +1,112 @@
-import React, { createContext, useState, useContext, useEffect } from 'react'
+import React, { createContext, useState, useContext, useEffect } from "react";
+import api from "../services/api";
+import { initSocket, disconnectSocket } from "../services/socket";
 
-const AuthContext = createContext()
+const AuthContext = createContext();
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
+    throw new Error("useAuth must be used within AuthProvider");
   }
-  return context
-}
-
-const mockUsers = {
-  'paciente@demo.com': {
-    password: 'senha123',
-    type: 'paciente',
-    name: 'João Silva',
-    email: 'paciente@demo.com'
-  },
-  'psicologo@demo.com': {
-    password: 'senha123',
-    type: 'psicologo',
-    name: 'Dra. Ana Santos',
-    email: 'psicologo@demo.com',
-    crp: 'CRP 01/12345'
-  }
-}
+  return context;
+};
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-    setLoading(false)
-  }, [])
+    checkAuth();
+  }, []);
 
-  const login = (email, password, userType) => {
-    const mockUser = mockUsers[email]
+  const checkAuth = async () => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
 
-    if (mockUser && mockUser.password === password && mockUser.type === userType) {
-      const userData = {
-        email: mockUser.email,
-        name: mockUser.name,
-        type: mockUser.type,
-        crp: mockUser.crp
+    if (token && storedUser) {
+      try {
+        // Verificar se o token ainda é válido
+        const response = await api.get("/auth/me");
+        setUser(response.data.data);
+
+        // Inicializar socket
+        initSocket(token);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       }
-      setUser(userData)
-      localStorage.setItem('user', JSON.stringify(userData))
-      return true
     }
-    return false
-  }
+    setLoading(false);
+  };
+
+  const login = async (email, password, userType) => {
+    try {
+      const response = await api.post("/auth/login", {
+        email,
+        password,
+        userType,
+      });
+
+      const { user: userData, token } = response.data.data;
+
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("token", token);
+
+      // Inicializar socket
+      initSocket(token);
+
+      return true;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  };
+
+  const register = async (formData) => {
+    try {
+      const response = await api.post("/auth/register", formData);
+
+      const { user: userData, token } = response.data.data;
+
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("token", token);
+
+      // Inicializar socket
+      initSocket(token);
+
+      return true;
+    } catch (error) {
+      console.error("Register error:", error);
+      throw error;
+    }
+  };
 
   const logout = () => {
-    setUser(null)
-    localStorage.removeItem('user')
-  }
+    setUser(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
+    // Desconectar socket
+    disconnectSocket();
+  };
+
+  const updateUser = (updatedUserData) => {
+    setUser(updatedUserData);
+    localStorage.setItem("user", JSON.stringify(updatedUserData));
+  };
 
   const value = {
     user,
     login,
+    register,
     logout,
-    loading
-  }
+    updateUser,
+    loading,
+  };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
