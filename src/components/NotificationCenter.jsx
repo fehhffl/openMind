@@ -71,9 +71,9 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
     try {
       // Atualizar UI imediatamente (otimistic update)
       const notifToDelete = notifications.find(n => n._id === notificationId);
-      setNotifications((prev) =>
-        prev.filter((notif) => notif._id !== notificationId)
-      );
+      const updatedNotifications = notifications.filter((notif) => notif._id !== notificationId);
+
+      setNotifications(updatedNotifications);
 
       // Se era não lida, decrementar o contador
       if (notifToDelete && !notifToDelete.read) {
@@ -83,6 +83,13 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
       // Fazer a requisição
       await api.delete(`/notifications/${notificationId}`);
       toast.success("Notificação removida");
+
+      // Fechar o painel se não houver mais notificações
+      if (updatedNotifications.length === 0) {
+        setTimeout(() => {
+          onClose();
+        }, 500);
+      }
     } catch (error) {
       console.error("Error deleting notification:", error);
       toast.error("Erro ao remover notificação");
