@@ -1,84 +1,98 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import PsychologistCard from '../components/PsychologistCard'
+import NotificationCenter from '../components/NotificationCenter'
+import { onNotification, offNotification } from '../services/socket'
+import { toast } from 'react-toastify'
+import api from '../services/api'
 import '../styles/Home.css'
-
-const mockPsychologists = [
-  {
-    id: 1,
-    name: 'Dra. Marina Costa',
-    specialties: ['Ansiedade', 'Depressão', 'Terapia Cognitivo-Comportamental'],
-    description: 'Psicóloga estagiária com foco em adultos jovens. Ofereço atendimento gratuito online para pessoas que buscam apoio emocional e desenvolvimento pessoal.',
-    availability: 'Segunda a Sexta, 14h às 18h',
-    experience: '6 meses de estágio supervisionado',
-    contact: 'marina.costa@psicoconnect.com',
-    image: '👩‍⚕️'
-  },
-  {
-    id: 2,
-    name: 'Dr. Pedro Almeida',
-    specialties: ['Relacionamentos', 'Autoestima', 'Orientação Profissional'],
-    description: 'Estagiário em psicologia clínica. Atendimento gratuito com foco em jovens adultos enfrentando desafios pessoais e profissionais.',
-    availability: 'Terça e Quinta, 9h às 12h',
-    experience: '4 meses de estágio',
-    contact: 'pedro.almeida@psicoconnect.com',
-    image: '👨‍⚕️'
-  },
-  {
-    id: 3,
-    name: 'Dra. Juliana Santos',
-    specialties: ['Estresse', 'Burnout', 'Mindfulness'],
-    description: 'Psicóloga estagiária oferecendo suporte gratuito para gestão de estresse e técnicas de relaxamento. Atendimento online disponível.',
-    availability: 'Segunda, Quarta e Sexta, 15h às 19h',
-    experience: '8 meses de prática supervisionada',
-    contact: 'juliana.santos@psicoconnect.com',
-    image: '👩‍⚕️'
-  },
-  {
-    id: 4,
-    name: 'Dr. Carlos Mendes',
-    specialties: ['Adolescentes', 'Família', 'Desenvolvimento Pessoal'],
-    description: 'Estagiário com foco em atendimento a adolescentes e orientação familiar. Sessões gratuitas para quem busca apoio nesta fase da vida.',
-    availability: 'Terça a Quinta, 13h às 17h',
-    experience: '5 meses de estágio clínico',
-    contact: 'carlos.mendes@psicoconnect.com',
-    image: '👨‍⚕️'
-  },
-  {
-    id: 5,
-    name: 'Dra. Amanda Lima',
-    specialties: ['Traumas', 'Fobias', 'EMDR'],
-    description: 'Psicóloga estagiária com formação em EMDR. Atendimento gratuito para pessoas lidando com traumas e fobias específicas.',
-    availability: 'Segunda e Sexta, 10h às 14h',
-    experience: '7 meses de experiência',
-    contact: 'amanda.lima@psicoconnect.com',
-    image: '👩‍⚕️'
-  },
-  {
-    id: 6,
-    name: 'Dr. Rafael Oliveira',
-    specialties: ['LGBTQIA+', 'Identidade de Gênero', 'Aceitação'],
-    description: 'Estagiário especializado em questões de diversidade. Oferece espaço seguro e acolhedor para discussão de identidade e orientação.',
-    availability: 'Quarta e Sexta, 16h às 20h',
-    experience: '6 meses de atendimento supervisionado',
-    contact: 'rafael.oliveira@psicoconnect.com',
-    image: '👨‍⚕️'
-  }
-]
 
 function Home() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [hasNewNotification, setHasNewNotification] = useState(false)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
+  const [psychologists, setPsychologists] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const allSpecialties = [...new Set(mockPsychologists.flatMap(p => p.specialties))]
+  useEffect(() => {
+    // Buscar dados baseado no tipo de usuário
+    const fetchData = async () => {
+      try {
+        setLoading(true)
 
-  const filteredPsychologists = mockPsychologists.filter(psych => {
+        if (user.userType === 'paciente') {
+          // Paciente vê psicólogos
+          const response = await api.get('/users/psychologists')
+          const mappedPsychologists = response.data.data.map(psych => ({
+            id: psych._id,
+            _id: psych._id,
+            name: psych.name,
+            specialties: psych.specialties || [],
+            description: psych.description || 'Psicólogo disponível para atendimento.',
+            availability: psych.availability || 'Consulte disponibilidade',
+            experience: psych.experience || 'Experiência não informada',
+            contact: psych.email,
+            image: psych.avatar || '👤',
+            email: psych.email
+          }))
+          setPsychologists(mappedPsychologists)
+        } else {
+          // Psicólogo vê pacientes
+          const response = await api.get('/users/patients')
+          const mappedPatients = response.data.data.map(patient => ({
+            id: patient._id,
+            _id: patient._id,
+            name: patient.name,
+            specialties: [], // Pacientes não têm especialidades
+            description: `Paciente cadastrado em ${new Date(patient.createdAt).toLocaleDateString('pt-BR')}`,
+            availability: 'Aguardando contato',
+            experience: '',
+            contact: patient.email,
+            image: patient.avatar || '👤',
+            email: patient.email
+          }))
+          setPsychologists(mappedPatients) // Usando o mesmo estado para simplicidade
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast.error(user.userType === 'paciente' ? 'Erro ao carregar psicólogos' : 'Erro ao carregar pacientes')
+        setPsychologists([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+
+    // Escutar notificações em tempo real
+    onNotification((notification) => {
+      setHasNewNotification(true)
+      setUnreadNotificationCount(prev => prev + 1)
+      toast.info(`📬 ${notification.title}`, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    })
+
+    return () => {
+      offNotification()
+    }
+  }, [])
+
+  // Buscar especialidades únicas apenas se for paciente
+  const allSpecialties = user.userType === 'paciente'
+    ? [...new Set(psychologists.flatMap(p => p.specialties || []))]
+    : []
+
+  const filteredPsychologists = psychologists.filter(psych => {
     const matchesSearch = psych.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         psych.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesSpecialty = !selectedSpecialty || psych.specialties.includes(selectedSpecialty)
+                         (psych.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSpecialty = !selectedSpecialty || (psych.specialties && psych.specialties.includes(selectedSpecialty))
     return matchesSearch && matchesSpecialty
   })
 
@@ -92,13 +106,33 @@ function Home() {
       <header className="home-header">
         <div className="header-content">
           <div className="logo-section">
-            <h1>PsicoConnect</h1>
+            <h1>OpenMind</h1>
             <span className="tagline">Cuidado psicológico acessível para todos</span>
           </div>
           <div className="user-section">
             <span className="welcome-msg">
-              Olá, {user.name} ({user.type === 'paciente' ? 'Paciente' : 'Psicólogo'})
+              Olá, {user.name} ({user.userType === 'paciente' ? 'Paciente' : 'Psicólogo'})
             </span>
+            {user.userType === 'psicologo' && (
+              <button onClick={() => navigate('/patients')} className="patients-btn">
+                👥 Pacientes
+              </button>
+            )}
+            <button onClick={() => navigate('/profile')} className="profile-btn">
+              👤 Perfil
+            </button>
+            <button
+              onClick={() => {
+                setShowNotifications(true)
+                setHasNewNotification(false)
+              }}
+              className="notification-btn"
+            >
+              🔔
+              {unreadNotificationCount > 0 && (
+                <span className="notification-badge">{unreadNotificationCount}</span>
+              )}
+            </button>
             <button onClick={handleLogout} className="logout-btn">
               Sair
             </button>
@@ -107,36 +141,55 @@ function Home() {
       </header>
 
       <main className="home-main">
-        <section className="hero-section">
-          <h2>Encontre Apoio Psicológico Gratuito</h2>
-          <p>Conectamos você com psicólogos estagiários dedicados que oferecem atendimento gratuito e de qualidade</p>
-        </section>
+        {loading ? (
+          <div className="loading-section">
+            <div className="spinner"></div>
+            <p>Carregando...</p>
+          </div>
+        ) : (
+          <>
+            <section className="hero-section">
+              <h2>
+                {user.userType === 'paciente'
+                  ? 'Encontre Apoio Psicológico Gratuito'
+                  : 'Pacientes Disponíveis'}
+              </h2>
+              <p>
+                {user.userType === 'paciente'
+                  ? 'Conectamos você com psicólogos estagiários dedicados que oferecem atendimento gratuito e de qualidade'
+                  : 'Veja pacientes cadastrados na plataforma e envie convites de atendimento'}
+              </p>
+            </section>
 
-        <section className="filters-section">
-          <div className="search-bar">
-            <input
-              type="text"
-              placeholder="Buscar por nome ou descrição..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="specialty-filter">
-            <select
-              value={selectedSpecialty}
-              onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="specialty-select"
-            >
-              <option value="">Todas as especialidades</option>
-              {allSpecialties.map(specialty => (
-                <option key={specialty} value={specialty}>
-                  {specialty}
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
+            <section className="filters-section">
+              <div className="search-bar">
+                <input
+                  type="text"
+                  placeholder={user.userType === 'paciente' ? 'Buscar psicólogo por nome...' : 'Buscar paciente por nome...'}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              {user.userType === 'paciente' && (
+                <div className="specialty-filter">
+                  <select
+                    value={selectedSpecialty}
+                    onChange={(e) => setSelectedSpecialty(e.target.value)}
+                    className="specialty-select"
+                  >
+                    <option value="">Todas as especialidades</option>
+                    {allSpecialties.map(specialty => (
+                      <option key={specialty} value={specialty}>
+                        {specialty}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </section>
+          </>
+        )}
 
         <section className="psychologists-grid">
           {filteredPsychologists.length > 0 ? (
@@ -144,33 +197,34 @@ function Home() {
               <PsychologistCard
                 key={psychologist.id}
                 psychologist={psychologist}
-                isPatient={user.type === 'paciente'}
+                isPatient={user.userType === 'paciente'}
+                currentUser={user}
               />
             ))
           ) : (
             <div className="no-results">
-              <p>Nenhum psicólogo encontrado com os critérios selecionados.</p>
+              <p>
+                {user.userType === 'paciente'
+                  ? 'Nenhum psicólogo encontrado com os critérios selecionados.'
+                  : 'Nenhum paciente encontrado.'}
+              </p>
             </div>
           )}
         </section>
-
-        {user.type === 'psicologo' && (
-          <section className="psychologist-info">
-            <div className="info-card">
-              <h3>Área do Psicólogo</h3>
-              <p>Como psicólogo estagiário, você pode visualizar os perfis de outros profissionais.</p>
-              <p>Em breve: funcionalidade para criar e gerenciar seu próprio perfil!</p>
-            </div>
-          </section>
-        )}
       </main>
 
       <footer className="home-footer">
-        <p>PsicoConnect © 2024 - Conectando pessoas ao cuidado psicológico</p>
+        <p>OpenMind © 2024 - Conectando pessoas ao cuidado psicológico</p>
         <p className="disclaimer">
           Os atendimentos são realizados por estagiários de psicologia sob supervisão profissional
         </p>
       </footer>
+
+      <NotificationCenter
+        show={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        onUnreadCountChange={(count) => setUnreadNotificationCount(count)}
+      />
     </div>
   )
 }
