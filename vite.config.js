@@ -8,7 +8,7 @@ export default defineConfig(({ command }) => {
     plugins: [react()],
     // Configurar base URL para GitHub Pages
     // Substitua 'psico-connect' pelo nome do seu repositório
-    base: isGitHubPages ? '/psico-connect/' : '/',
+    base: isGitHubPages ? '/openMind/' : '/',
     server: {
       port: 3000
     },
