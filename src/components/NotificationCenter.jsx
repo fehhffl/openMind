@@ -141,11 +141,6 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
             )}
           </div>
           <div className="header-actions">
-            {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className="mark-all-btn">
-                Marcar todas como lidas
-              </button>
-            )}
             <button onClick={onClose} className="close-btn">
               ✕
             </button>
@@ -168,24 +163,12 @@ function NotificationCenter({ show, onClose, onUnreadCountChange }) {
               <div
                 key={notif._id}
                 className={`notification-item ${!notif.read ? "unread" : ""}`}
-                onClick={() => !notif.read && markAsRead(notif._id)}
               >
                 <div className="notif-icon">
                   {getNotificationIcon(notif.type)}
                 </div>
                 <div className="notif-content">
-                  <div className="notif-header-row">
-                    <h4>{notif.title}</h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNotification(notif._id);
-                      }}
-                      className="delete-notif-btn"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+                  <h4>{notif.title}</h4>
                   <p>{notif.message}</p>
                   {notif.sender && (
                     <div className="notif-sender">

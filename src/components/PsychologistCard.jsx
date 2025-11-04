@@ -70,15 +70,8 @@ function PsychologistCard({ psychologist, isPatient, currentUser }) {
         {isPatient ? (
           <>
             <button
-              onClick={handleRequestConsultation}
-              className="request-btn"
-              disabled={loading}
-            >
-              {loading ? '⏳ Enviando...' : '📩 Solicitar Consulta'}
-            </button>
-            <button
               onClick={handleContact}
-              className="contact-btn-secondary"
+              className="contact-btn-primary"
             >
               {showContact ? 'Ocultar Contato' : '👁️ Ver Contato'}
             </button>

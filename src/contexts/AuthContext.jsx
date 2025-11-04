@@ -1,6 +1,27 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import api from "../services/api";
-import { initSocket, disconnectSocket } from "../services/socket";
+
+// Detectar se estamos no GitHub Pages
+const isGitHubPages = window.location.hostname.includes('github.io') ||
+                      import.meta.env.VITE_USE_MOCK_API === 'true';
+
+// Funções de socket opcionais para GitHub Pages
+let initSocket = () => {
+  if (!isGitHubPages) {
+    console.warn('Socket.IO não disponível no modo mock');
+  }
+};
+let disconnectSocket = () => {};
+
+// Importar socket apenas se não estivermos no GitHub Pages
+if (!isGitHubPages) {
+  import("../services/socket").then(socketModule => {
+    initSocket = socketModule.initSocket;
+    disconnectSocket = socketModule.disconnectSocket;
+  }).catch(err => {
+    console.warn('Socket service não disponível:', err);
+  });
+}
 
 const AuthContext = createContext();
 
@@ -29,8 +50,10 @@ export function AuthProvider({ children }) {
         const userData = JSON.parse(storedUser);
         setUser(userData);
 
-        // Inicializar socket
-        initSocket(token);
+        // Inicializar socket (apenas se disponível)
+        if (initSocket && !isGitHubPages) {
+          initSocket(token);
+        }
       } catch (error) {
         console.error("Auth check failed:", error);
         localStorage.removeItem("token");
@@ -48,14 +71,18 @@ export function AuthProvider({ children }) {
         userType,
       });
 
-      const { user: userData, token } = response.data.data;
+      // Compatibilidade com mockApi e API real
+      const responseData = response.data.data || response.data;
+      const { user: userData, token } = responseData;
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("token", token);
 
-      // Inicializar socket
-      initSocket(token);
+      // Inicializar socket (apenas se disponível)
+      if (initSocket) {
+        initSocket(token);
+      }
 
       return true;
     } catch (error) {
@@ -68,14 +95,18 @@ export function AuthProvider({ children }) {
     try {
       const response = await api.post("/auth/register", formData);
 
-      const { user: userData, token } = response.data.data;
+      // Compatibilidade com mockApi e API real
+      const responseData = response.data.data || response.data;
+      const { user: userData, token } = responseData;
 
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("token", token);
 
-      // Inicializar socket
-      initSocket(token);
+      // Inicializar socket (apenas se disponível)
+      if (initSocket) {
+        initSocket(token);
+      }
 
       return true;
     } catch (error) {
@@ -89,8 +120,10 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
 
-    // Desconectar socket
-    disconnectSocket();
+    // Desconectar socket (apenas se disponível)
+    if (disconnectSocket && !isGitHubPages) {
+      disconnectSocket();
+    }
   };
 
   const updateUser = (updatedUserData) => {

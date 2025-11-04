@@ -51,8 +51,9 @@ Você tem **2 opções** para rodar o MongoDB:
    - Edite o arquivo `psico-connect-backend/.env`
    - Cole sua connection string:
      ```env
-     MONGODB_URI=mongodb+srv://psicoconnect:psicoconnect123@cluster0.xxxxx.mongodb.net/psicoconnect?retryWrites=true&w=majority
+     MONGODB_URI=mongodb+srv://SEU_USUARIO:SUA_SENHA@cluster0.xxxxx.mongodb.net/psicoconnect?retryWrites=true&w=majority
      ```
+   - **IMPORTANTE:** Substitua `SEU_USUARIO` e `SUA_SENHA` pelas suas credenciais
 
 7. **Pronto!** Agora você pode rodar o backend.
 
